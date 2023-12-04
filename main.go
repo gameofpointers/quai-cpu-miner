@@ -315,7 +315,7 @@ func (m *Miner) miningLoop() error {
 					case <-ticker.C:
 						interrupt()
 
-						if tickerCounter%5000 == 0 {
+						if tickerCounter%2000 == 0 {
 							m.ControlSleep()
 							tickerCounter = 0
 						} else {
@@ -336,7 +336,7 @@ func (m *Miner) miningLoop() error {
 
 func (m *Miner) ControlSleep() {
 	var target float64 = 1000
-	var k float64 = 1000000
+	var k float64 = 10000
 	hashrate := m.engine.Hashrate()
 	error := (target - hashrate) / k
 	newSleep := m.sleep - error
