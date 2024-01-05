@@ -15,7 +15,6 @@ import (
 	"github.com/TwiN/go-color"
 	"github.com/dominant-strategies/go-quai/common"
 	"github.com/dominant-strategies/go-quai/consensus/blake3pow"
-	"github.com/dominant-strategies/go-quai/consensus/progpow"
 	"github.com/dominant-strategies/go-quai/core/types"
 	"github.com/dominant-strategies/go-quai/quaiclient/ethclient"
 
@@ -146,9 +145,7 @@ func main() {
 	var engine consensus.Engine
 
 	if config.RunBlake3 {
-		engine = blake3pow.New(blake3pow.Config{NotifyFull: true}, nil, false)
-	} else {
-		engine = progpow.New(progpow.Config{NotifyFull: true}, nil, false)
+		engine = blake3pow.New(blake3pow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false)
 	}
 
 	m := &Miner{
@@ -174,7 +171,6 @@ func main() {
 	}
 	go m.resultLoop()
 	go m.miningLoop()
-	go m.hashratePrinter()
 	go m.refreshMiningWork()
 	defer m.miningWorkRefresh.Stop()
 	<-exit
@@ -311,44 +307,6 @@ func (m *Miner) refreshMiningWork() {
 		select {
 		case <-m.miningWorkRefresh.C:
 			m.fetchPendingHeaderNode()
-		}
-	}
-}
-
-// WatchHashRate is a simple method to watch the hashrate of our miner and log the output.
-func (m *Miner) hashratePrinter() {
-	ticker := time.NewTicker(60 * time.Second)
-	toSiUnits := func(hr float64) (float64, string) {
-		reduced := hr
-		order := 0
-		for {
-			if reduced >= 1000 {
-				reduced /= 1000
-				order += 3
-			} else {
-				break
-			}
-		}
-		switch order {
-		case 3:
-			return reduced, "Kh/s"
-		case 6:
-			return reduced, "Mh/s"
-		case 9:
-			return reduced, "Gh/s"
-		case 12:
-			return reduced, "Th/s"
-		default:
-			// If reduction didn't work, just return the original
-			return hr, "h/s"
-		}
-	}
-	for {
-		select {
-		case <-ticker.C:
-			hashRate := m.engine.Hashrate()
-			hr, units := toSiUnits(hashRate)
-			log.Println("Current hashrate: ", hr, units)
 		}
 	}
 }
