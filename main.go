@@ -11,12 +11,12 @@ import (
 
 	"github.com/INFURA/go-ethlibs/jsonrpc"
 	"github.com/dominant-strategies/go-quai/consensus"
+	"github.com/dominant-strategies/go-quai/quaiclient"
 
 	"github.com/TwiN/go-color"
 	"github.com/dominant-strategies/go-quai/common"
 	"github.com/dominant-strategies/go-quai/consensus/blake3pow"
 	"github.com/dominant-strategies/go-quai/core/types"
-	"github.com/dominant-strategies/go-quai/quaiclient/ethclient"
 
 	"github.com/dominant-strategies/quai-cpu-miner/util"
 )
@@ -66,7 +66,7 @@ type Miner struct {
 
 // Clients for RPC connection to the Prime, region, & zone ports belonging to the
 // slice we are actively mining
-type SliceClients [common.HierarchyDepth]*ethclient.Client
+type SliceClients [common.HierarchyDepth]*quaiclient.Client
 
 // Creates a MinerSession object that is connected to the single proxy node.
 func connectToProxy(config util.Config) *util.MinerSession {
@@ -97,7 +97,7 @@ func connectToSlice(config util.Config) SliceClients {
 	zoneConnected := false
 	for !primeConnected || !regionConnected || !zoneConnected {
 		if config.PrimeURL != "" && !primeConnected {
-			clients[common.PRIME_CTX], err = ethclient.Dial(config.PrimeURL)
+			clients[common.PRIME_CTX], err = quaiclient.Dial(config.PrimeURL)
 			if err != nil {
 				log.Println("Unable to connect to node:", "Prime", config.PrimeURL)
 			} else {
@@ -105,7 +105,7 @@ func connectToSlice(config util.Config) SliceClients {
 			}
 		}
 		if config.RegionURLs[loc.Region()] != "" && !regionConnected {
-			clients[common.REGION_CTX], err = ethclient.Dial(config.RegionURLs[loc.Region()])
+			clients[common.REGION_CTX], err = quaiclient.Dial(config.RegionURLs[loc.Region()])
 			if err != nil {
 				log.Println("Unable to connect to node:", "Region", config.RegionURLs[loc.Region()])
 			} else {
@@ -113,7 +113,7 @@ func connectToSlice(config util.Config) SliceClients {
 			}
 		}
 		if config.ZoneURLs[loc.Region()][loc.Zone()] != "" && !zoneConnected {
-			clients[common.ZONE_CTX], err = ethclient.Dial(config.ZoneURLs[loc.Region()][loc.Zone()])
+			clients[common.ZONE_CTX], err = quaiclient.Dial(config.ZoneURLs[loc.Region()][loc.Zone()])
 			if err != nil {
 				log.Println("Unable to connect to node:", "Zone", config.ZoneURLs[loc.Region()][loc.Zone()])
 			} else {
