@@ -41,7 +41,7 @@ type Miner struct {
 	engine consensus.Engine
 
 	// Current header to mine
-	header *types.Header
+	header *types.WorkObject
 
 	// RPC client connection to mining proxy
 	proxyClient *util.MinerSession
@@ -50,10 +50,10 @@ type Miner struct {
 	sliceClients SliceClients
 
 	// Channel to receive header updates
-	updateCh chan *types.WorkObjectHeader
+	updateCh chan *types.WorkObject
 
 	// Channel to submit completed work
-	resultCh chan *types.WorkObjectHeader
+	resultCh chan *types.WorkObject
 
 	// Track previous block number for pretty printing
 	previousNumber [common.HierarchyDepth]uint64
@@ -152,9 +152,9 @@ func main() {
 	m := &Miner{
 		config:            config,
 		engine:            engine,
-		header:            types.EmptyHeader(),
-		updateCh:          make(chan *types.WorkObjectHeader, resultQueueSize),
-		resultCh:          make(chan *types.WorkObjectHeader, resultQueueSize),
+		header:            &types.WorkObject{},
+		updateCh:          make(chan *types.WorkObject, resultQueueSize),
+		resultCh:          make(chan *types.WorkObject, resultQueueSize),
 		previousNumber:    [common.HierarchyDepth]uint64{0, 0, 0},
 		miningWorkRefresh: time.NewTicker(miningWorkRefreshRate),
 	}
@@ -294,18 +294,22 @@ func (m *Miner) resultLoop() {
 	for {
 		select {
 		case header := <-m.resultCh:
-			order := 2
+			_, order, err := m.engine.CalcOrder(header)
+			if err != nil {
+				log.Println("Error calculating order: ", err)
+				return
+			}
 			switch order {
 			case common.PRIME_CTX:
-				log.Println(header.Number(), header.Hash())
+				log.Println(header.Number(common.ZONE_CTX), header.Hash())
 			case common.REGION_CTX:
-				log.Println(header.Number(), header.Hash())
+				log.Println(header.Number(common.ZONE_CTX), header.Hash())
 			case common.ZONE_CTX:
-				log.Println(header.Number(), header.Hash())
+				log.Println(header.Number(common.ZONE_CTX), header.Hash())
 			}
 			if !m.config.Proxy {
 				for i := common.HierarchyDepth - 1; i >= order; i-- {
-					err := m.sendMinedHeaderNodes(i, header)
+					err := m.sendMinedHeaderNodes(i, header.WorkObjectHeader())
 					if err != nil {
 						// Go back to waiting on the next block.
 						fmt.Errorf("error submitting block to context %d: %v", order, err)
