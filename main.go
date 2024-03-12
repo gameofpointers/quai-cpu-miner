@@ -295,6 +295,7 @@ func (m *Miner) resultLoop() {
 		select {
 		case header := <-m.resultCh:
 			_, order, err := m.engine.CalcOrder(header)
+			log.Println("Order: ", order)
 			if err != nil {
 				log.Println("Error calculating order: ", err)
 				return
@@ -309,7 +310,7 @@ func (m *Miner) resultLoop() {
 			}
 			if !m.config.Proxy {
 				for i := common.HierarchyDepth - 1; i >= order; i-- {
-					err := m.sendMinedHeaderNodes(i, header.WorkObjectHeader())
+					err := m.sendMinedHeaderNodes(i, header)
 					if err != nil {
 						// Go back to waiting on the next block.
 						fmt.Errorf("error submitting block to context %d: %v", order, err)
@@ -322,7 +323,7 @@ func (m *Miner) resultLoop() {
 }
 
 // Sends the mined header to its mining client.
-func (m *Miner) sendMinedHeaderNodes(order int, header *types.WorkObjectHeader) error {
+func (m *Miner) sendMinedHeaderNodes(order int, header *types.WorkObject) error {
 	return m.sliceClients[order].ReceiveMinedHeader(context.Background(), header)
 }
 
