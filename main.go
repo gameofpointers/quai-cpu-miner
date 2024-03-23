@@ -10,12 +10,14 @@ import (
 	"time"
 
 	"github.com/INFURA/go-ethlibs/jsonrpc"
+	"github.com/TwiN/go-color"
 	"github.com/dominant-strategies/go-quai/consensus"
 	"github.com/dominant-strategies/go-quai/quaiclient"
 	"github.com/sirupsen/logrus"
 
 	"github.com/dominant-strategies/go-quai/common"
 	"github.com/dominant-strategies/go-quai/consensus/blake3pow"
+	"github.com/dominant-strategies/go-quai/consensus/progpow"
 	"github.com/dominant-strategies/go-quai/core/types"
 
 	"github.com/dominant-strategies/quai-cpu-miner/util"
@@ -147,6 +149,8 @@ func main() {
 
 	if config.RunBlake3 {
 		engine = blake3pow.New(blake3pow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
+	} else {
+		engine = progpow.New(progpow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
 	}
 
 	m := &Miner{
@@ -254,7 +258,7 @@ func (m *Miner) miningLoop() error {
 			stopCh = nil
 		}
 	}
-	var header *types.Header
+	var header *types.WorkObject
 	for {
 		select {
 		case newHead := <-m.updateCh:
@@ -262,7 +266,6 @@ func (m *Miner) miningLoop() error {
 			if header != nil && newHead.SealHash() == header.SealHash() {
 				continue
 			}
-
 			header := newHead
 			m.miningWorkRefresh.Reset(miningWorkRefreshRate)
 			// Mine the header here
@@ -270,7 +273,25 @@ func (m *Miner) miningLoop() error {
 			// Interrupt previous sealing operation
 			interrupt()
 			stopCh = make(chan struct{})
-			log.Println("Mining Block: ", "location", header.Location(), "difficulty", header.Difficulty())
+			number := [common.HierarchyDepth]uint64{header.NumberU64(common.PRIME_CTX), header.NumberU64(common.REGION_CTX), header.NumberU64(common.ZONE_CTX)}
+			primeStr := fmt.Sprint(number[common.PRIME_CTX])
+			regionStr := fmt.Sprint(number[common.REGION_CTX])
+			zoneStr := fmt.Sprint(number[common.ZONE_CTX])
+			if number != m.previousNumber {
+				if number[common.PRIME_CTX] != m.previousNumber[common.PRIME_CTX] {
+					primeStr = color.Ize(color.Red, primeStr)
+					regionStr = color.Ize(color.Red, regionStr)
+					zoneStr = color.Ize(color.Red, zoneStr)
+				} else if number[common.REGION_CTX] != m.previousNumber[common.REGION_CTX] {
+					regionStr = color.Ize(color.Yellow, regionStr)
+					zoneStr = color.Ize(color.Yellow, zoneStr)
+				} else if number[common.ZONE_CTX] != m.previousNumber[common.ZONE_CTX] {
+					zoneStr = color.Ize(color.Blue, zoneStr)
+				}
+				log.Println("Mining Block: ", fmt.Sprintf("[%s %s %s]", primeStr, regionStr, zoneStr), "location", header.Location(), "difficulty", header.Difficulty())
+			}
+			m.previousNumber = [common.HierarchyDepth]uint64{header.NumberU64(common.PRIME_CTX), header.NumberU64(common.REGION_CTX), header.NumberU64(common.ZONE_CTX)}
+			header.SetTime(uint64(time.Now().Unix()))
 			if err := m.engine.Seal(header, m.resultCh, stopCh); err != nil {
 				log.Println("Block sealing failed", "err", err)
 			}
@@ -295,18 +316,17 @@ func (m *Miner) resultLoop() {
 		select {
 		case header := <-m.resultCh:
 			_, order, err := m.engine.CalcOrder(header)
-			log.Println("Order: ", order)
 			if err != nil {
 				log.Println("Error calculating order: ", err)
-				return
+				continue
 			}
 			switch order {
 			case common.PRIME_CTX:
-				log.Println(header.Number(common.ZONE_CTX), header.Hash())
+				log.Println(color.Ize(color.Red, "PRIME block : "), header.NumberArray(), header.Hash())
 			case common.REGION_CTX:
-				log.Println(header.Number(common.ZONE_CTX), header.Hash())
+				log.Println(color.Ize(color.Yellow, "REGION block: "), header.NumberArray(), header.Hash())
 			case common.ZONE_CTX:
-				log.Println(header.Number(common.ZONE_CTX), header.Hash())
+				log.Println(color.Ize(color.Blue, "ZONE block  : "), header.NumberArray(), header.Hash())
 			}
 			if !m.config.Proxy {
 				for i := common.HierarchyDepth - 1; i >= order; i-- {
