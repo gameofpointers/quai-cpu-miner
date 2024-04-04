@@ -291,7 +291,7 @@ func (m *Miner) miningLoop() error {
 				log.Println("Mining Block: ", fmt.Sprintf("[%s %s %s]", primeStr, regionStr, zoneStr), "location", header.Location(), "difficulty", header.Difficulty())
 			}
 			m.previousNumber = [common.HierarchyDepth]uint64{header.NumberU64(common.PRIME_CTX), header.NumberU64(common.REGION_CTX), header.NumberU64(common.ZONE_CTX)}
-			header.SetTime(uint64(time.Now().Unix()))
+			header.Header().SetTime(uint64(time.Now().Unix()))
 			if err := m.engine.Seal(header, m.resultCh, stopCh); err != nil {
 				log.Println("Block sealing failed", "err", err)
 			}
@@ -344,6 +344,7 @@ func (m *Miner) resultLoop() {
 
 // Sends the mined header to its mining client.
 func (m *Miner) sendMinedHeaderNodes(order int, header *types.WorkObject) error {
+	log.Println("Sending the block to the order", order)
 	return m.sliceClients[order].ReceiveMinedHeader(context.Background(), header)
 }
 
