@@ -22,7 +22,7 @@ quai-cpu-miner:
 
 # to manually select a location to mine
 run-mine:
-	sudo cpulimit --limit 20 ./build/bin/quai-cpu-miner $(region) $(zone)
+	./build/bin/quai-cpu-miner $(region) $(zone)
 
 # to run in the background (manually set location)
 run-mine-background:
