@@ -20,6 +20,7 @@ import (
 
 	"github.com/dominant-strategies/go-quai/common"
 	"github.com/dominant-strategies/go-quai/consensus/blake3pow"
+	"github.com/dominant-strategies/go-quai/consensus/kawpow"
 	"github.com/dominant-strategies/go-quai/consensus/progpow"
 	"github.com/dominant-strategies/go-quai/core/types"
 
@@ -157,10 +158,15 @@ func main() {
 	var engine consensus.Engine
 	logger := logrus.New()
 
-	if config.RunBlake3 {
+	if config.PowEngine == "blake3" {
 		engine = blake3pow.New(blake3pow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
-	} else {
+	} else if config.PowEngine == "progpow" {
 		engine = progpow.New(progpow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
+	} else if config.PowEngine == "kawpow" {
+		engine = kawpow.New(kawpow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
+	} else {
+		log.Println("Invalid PoW engine specified in config file. Options are 'blake3', 'progpow', or 'kawpow'.")
+		return
 	}
 
 	m := &Miner{
@@ -353,7 +359,7 @@ func (m *Miner) resultLoop() {
 			}
 			powHash, err := m.engine.ComputePowHash(header.WorkObjectHeader())
 			if err != nil {
-				log.Println("Error computing pow hash: ", err)
+				log.Println("Error computing pow hash: ", err, header.WorkObjectHeader().AuxPow().PowID())
 				continue
 			}
 			powHashBigInt := new(big.Int).SetBytes(powHash.Bytes())

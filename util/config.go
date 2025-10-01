@@ -15,7 +15,7 @@ type Config struct {
 	RegionURLs    []string
 	ZoneURLs      [][]string
 	Location      common.Location
-	RunBlake3     bool
+	PowEngine     string
 }
 
 // LoadConfig reads configuration from file or environment variables.
