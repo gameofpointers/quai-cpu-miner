@@ -24,6 +24,8 @@ import (
 	"github.com/dominant-strategies/go-quai/consensus/progpow"
 	"github.com/dominant-strategies/go-quai/core/types"
 
+	"github.com/dominant-strategies/quai-cpu-miner/scrypt"
+	"github.com/dominant-strategies/quai-cpu-miner/sha"
 	"github.com/dominant-strategies/quai-cpu-miner/util"
 )
 
@@ -41,12 +43,31 @@ var (
 
 )
 
+type BasicEngine interface {
+	// ComputePowHash returns the pow hash of the workobject header
+	ComputePowHash(header *types.WorkObjectHeader) (common.Hash, error)
+
+	// Mine is the actual proof-of-work miner that searches for a nonce starting from
+	// seed that results in correct final block difficulty.
+	Mine(workObject *types.WorkObject, abort <-chan struct{}, found chan *types.WorkObject)
+
+	// MineToThreshold allows for customization of the difficulty threshold.
+	MineToThreshold(workObject *types.WorkObject, threshold int, abort <-chan struct{}, found chan *types.WorkObject)
+
+	// Seal generates a new sealing request for the given input block and pushes
+	// the result into the given channel.
+	//
+	// Note, the method returns immediately and will send the result async. More
+	// than one result may also be returned depending on the consensus algorithm.
+	Seal(header *types.WorkObject, results chan<- *types.WorkObject, stop <-chan struct{}) error
+}
+
 type Miner struct {
 	// Miner config object
 	config util.Config
 
 	// Progpow consensus engine used to seal a block
-	engine consensus.Engine
+	engine BasicEngine
 
 	// Current header to mine
 	header *types.WorkObject
@@ -150,12 +171,16 @@ func main() {
 	}
 	// Parse mining location from args
 	if len(os.Args) > 2 {
-		raw := os.Args[1:3]
+		raw := os.Args[1:4]
 		region, _ := strconv.Atoi(raw[0])
 		zone, _ := strconv.Atoi(raw[1])
 		config.Location = common.Location{byte(region), byte(zone)}
+		log.Print("Raw", raw)
+		engine := raw[2]
+		config.PowEngine = engine
 	}
-	var engine consensus.Engine
+
+	var engine BasicEngine
 	logger := logrus.New()
 
 	if config.PowEngine == "blake3" {
@@ -164,8 +189,12 @@ func main() {
 		engine = progpow.New(progpow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
 	} else if config.PowEngine == "kawpow" {
 		engine = kawpow.New(kawpow.Config{NotifyFull: true, NodeLocation: common.Location{0, 0}}, nil, false, logger)
+	} else if config.PowEngine == "sha" {
+		engine = sha.NewSha256pow(0, logger)
+	} else if config.PowEngine == "scrypt" {
+		engine = scrypt.NewScryptpow(0, logger)
 	} else {
-		log.Println("Invalid PoW engine specified in config file. Options are 'blake3', 'progpow', or 'kawpow'.")
+		log.Println("Invalid PoW engine specified in config file. Options are 'blake3', 'progpow', or 'kawpow'.", config.PowEngine)
 		return
 	}
 
@@ -213,9 +242,9 @@ func (m *Miner) subscribeProxy() error {
 
 // Subscribes to the zone node in order to get pending header updates.
 func (m *Miner) subscribeNode() {
-	if _, err := m.sliceClients[common.ZONE_CTX].SubscribePendingHeader(context.Background(), m.woCh); err != nil {
-		log.Fatal("Failed to subscribe to pending header events", err)
-	}
+	// if _, err := m.sliceClients[common.ZONE_CTX].SubscribePendingHeader(context.Background(), m.woCh); err != nil {
+	// 	log.Fatal("Failed to subscribe to pending header events", err)
+	// }
 }
 
 // Gets the latest pending header from the proxy.
@@ -248,7 +277,8 @@ func (m *Miner) fetchPendingHeaderProxy() {
 func (m *Miner) fetchPendingHeaderNode() {
 	retryDelay := 1 // Start retry at 1 second
 	for {
-		header, err := m.sliceClients[common.ZONE_CTX].GetPendingHeader(context.Background())
+		ctx := context.WithValue(context.Background(), "powid", types.SHA)
+		header, err := m.sliceClients[common.ZONE_CTX].GetPendingHeader(ctx, m.GetPowIdForEngine())
 		if err != nil {
 			log.Println("Pending block not found error: ", err)
 			time.Sleep(time.Duration(retryDelay) * time.Second)
@@ -261,6 +291,22 @@ func (m *Miner) fetchPendingHeaderNode() {
 			break
 		}
 	}
+}
+
+func (m *Miner) GetPowIdForEngine() types.PowID {
+	if m.config.PowEngine == "progpow" || m.config.PowEngine == "blake3" {
+		return types.Progpow
+	}
+	if m.config.PowEngine == "kawpow" {
+		return types.Kawpow
+	}
+	if m.config.PowEngine == "sha" {
+		return types.SHA
+	}
+	if m.config.PowEngine == "scrypt" {
+		return types.Scrypt
+	}
+	return types.Progpow
 }
 
 func (m *Miner) listenNewPendingHeader() {
@@ -351,12 +397,22 @@ func (m *Miner) resultLoop() {
 	for {
 		select {
 		case header := <-m.resultCh:
-			// check if the mined object is a workshare or a block
-			workShareTarget, err := consensus.CalcWorkShareThreshold(header.WorkObjectHeader(), params.WorkSharesThresholdDiff)
-			if err != nil {
-				log.Println("Err computing the work share target: ", err)
-				continue
+
+			var workShareTarget *big.Int
+			var err error
+
+			if m.config.PowEngine == "sha" {
+				workShareTarget = new(big.Int).Div(common.Big2e256, header.WorkObjectHeader().ShaDiffAndCount().Difficulty())
+			} else if m.config.PowEngine == "scrypt" {
+				workShareTarget = new(big.Int).Div(common.Big2e256, header.WorkObjectHeader().ShaDiffAndCount().Difficulty())
+			} else {
+				workShareTarget, err = consensus.CalcWorkShareThreshold(header.WorkObjectHeader(), params.WorkSharesThresholdDiff)
+				if err != nil {
+					log.Println("Error calculating work share target: ", err)
+					continue
+				}
 			}
+
 			powHash, err := m.engine.ComputePowHash(header.WorkObjectHeader())
 			if err != nil {
 				log.Println("Error computing pow hash: ", err, header.WorkObjectHeader().AuxPow().PowID())
@@ -364,10 +420,12 @@ func (m *Miner) resultLoop() {
 			}
 			powHashBigInt := new(big.Int).SetBytes(powHash.Bytes())
 
+			nonBlockPowEngines := m.config.PowEngine == "sha" || m.config.PowEngine == "scrypt"
+
 			// Check if satisfies workShareTarget
 			if powHashBigInt.Cmp(workShareTarget) < 0 {
 				// Check if also satisfies block target
-				if powHashBigInt.Cmp(consensus.DifficultyToTarget(header.Difficulty())) < 0 {
+				if powHashBigInt.Cmp(consensus.DifficultyToTarget(header.Difficulty())) < 0 && !nonBlockPowEngines {
 					order, err := m.sliceClients[common.ZONE_CTX].CalcOrder(context.Background(), header)
 					if err != nil {
 						log.Println("Error calculating order: ", err)
@@ -382,13 +440,11 @@ func (m *Miner) resultLoop() {
 						log.Println(color.Ize(color.Blue, "ZONE block  : "), header.NumberArray(), header.Hash())
 					}
 					if !m.config.Proxy {
-						for i := common.HierarchyDepth - 1; i >= order; i-- {
-							err := m.sendMinedHeaderNodes(i, header)
-							if err != nil {
-								// Go back to waiting on the next block.
-								fmt.Errorf("error submitting block to context %d: %v", order, err)
-								continue
-							}
+						err := m.sendMinedHeaderNodes(common.ZONE_CTX, header)
+						if err != nil {
+							// Go back to waiting on the next block.
+							fmt.Errorf("error submitting block to context %d: %v", common.ZONE_CTX, err)
+							continue
 						}
 					}
 				} else {

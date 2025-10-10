@@ -22,7 +22,7 @@ quai-cpu-miner:
 
 # to manually select a location to mine
 run-mine:
-	./build/bin/quai-cpu-miner $(region) $(zone)
+	./build/bin/quai-cpu-miner $(region) $(zone) $(engine)
 
 # to run in the background (manually set location)
 run-mine-background:
