@@ -404,7 +404,7 @@ func (m *Miner) resultLoop() {
 			if m.config.PowEngine == "sha" {
 				workShareTarget = new(big.Int).Div(common.Big2e256, header.WorkObjectHeader().ShaDiffAndCount().Difficulty())
 			} else if m.config.PowEngine == "scrypt" {
-				workShareTarget = new(big.Int).Div(common.Big2e256, header.WorkObjectHeader().ShaDiffAndCount().Difficulty())
+				workShareTarget = new(big.Int).Div(common.Big2e256, header.WorkObjectHeader().ScryptDiffAndCount().Difficulty())
 			} else {
 				workShareTarget, err = consensus.CalcWorkShareThreshold(header.WorkObjectHeader(), params.WorkSharesThresholdDiff)
 				if err != nil {

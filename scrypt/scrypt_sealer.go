@@ -141,7 +141,7 @@ func (scryptpow *Scryptpow) MineToThreshold(workObject *types.WorkObject, workSh
 		return
 	}
 
-	target := new(big.Int).Div(common.Big2e256, workObject.WorkObjectHeader().ShaDiffAndCount().Difficulty())
+	target := new(big.Int).Div(common.Big2e256, workObject.WorkObjectHeader().ScryptDiffAndCount().Difficulty())
 
 	workObject = types.CopyWorkObject(workObject)
 	bitcoinHeaderBytes := workObject.AuxPow().Header()
