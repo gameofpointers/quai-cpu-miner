@@ -127,8 +127,7 @@ func (scryptpow *Scryptpow) Seal(header *types.WorkObject, results chan<- *types
 
 func (scryptpow *Scryptpow) ComputePowHash(header *types.WorkObjectHeader) (common.Hash, error) {
 	// decode the bitcoin header
-	headerBytes := header.AuxPow().Header()
-	return types.ScryptPowHash(headerBytes)
+	return header.AuxPow().Header().PowHash(), nil
 }
 
 func (scryptpow *Scryptpow) Mine(header *types.WorkObject, abort <-chan struct{}, found chan *types.WorkObject) {
@@ -144,12 +143,7 @@ func (scryptpow *Scryptpow) MineToThreshold(workObject *types.WorkObject, workSh
 	target := new(big.Int).Div(common.Big2e256, workObject.WorkObjectHeader().ScryptDiffAndCount().Difficulty())
 
 	workObject = types.CopyWorkObject(workObject)
-	bitcoinHeaderBytes := workObject.AuxPow().Header()
-	bitcoinHeader, err := types.DecodeBitcoinHeader(bitcoinHeaderBytes)
-	if err != nil {
-		scryptpow.logger.WithField("err", err).Error("Error decoding bitcoin header")
-		return
-	}
+	bitcoinHeader := workObject.AuxPow().Header()
 
 	// Start generating random nonces until we abort or find a good one
 	scryptpow.lock.Lock()
@@ -176,10 +170,9 @@ search:
 				attempts = 0
 			}
 			// Compute the PoW value of this nonce using SHA256
-			bitcoinHeader.Nonce = uint32(nonce)
-			bitcoinHeaderBytes = bitcoinHeader.EncodeBinary()
+			bitcoinHeader.SetNonce(uint32(nonce))
 
-			workObject.WorkObjectHeader().AuxPow().SetHeader(bitcoinHeaderBytes)
+			workObject.WorkObjectHeader().AuxPow().SetHeader(bitcoinHeader)
 
 			powHash, err := scryptpow.ComputePowHash(workObject.WorkObjectHeader())
 			if err != nil {

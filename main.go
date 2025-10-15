@@ -277,8 +277,7 @@ func (m *Miner) fetchPendingHeaderProxy() {
 func (m *Miner) fetchPendingHeaderNode() {
 	retryDelay := 1 // Start retry at 1 second
 	for {
-		ctx := context.WithValue(context.Background(), "powid", types.SHA)
-		header, err := m.sliceClients[common.ZONE_CTX].GetPendingHeader(ctx, m.GetPowIdForEngine())
+		header, err := m.sliceClients[common.ZONE_CTX].GetPendingHeader(context.Background(), m.GetPowIdForEngine())
 		if err != nil {
 			log.Println("Pending block not found error: ", err)
 			time.Sleep(time.Duration(retryDelay) * time.Second)
@@ -301,7 +300,7 @@ func (m *Miner) GetPowIdForEngine() types.PowID {
 		return types.Kawpow
 	}
 	if m.config.PowEngine == "sha" {
-		return types.SHA
+		return types.SHA_BCH
 	}
 	if m.config.PowEngine == "scrypt" {
 		return types.Scrypt
