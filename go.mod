@@ -27,6 +27,7 @@ require (
 	github.com/btcsuite/btcd/btcutil v1.1.6 // indirect
 	github.com/btcsuite/btcd/chaincfg/chainhash v1.1.0 // indirect
 	github.com/btcsuite/btclog v0.0.0-20170628155309-84c8d2346e9f // indirect
+	github.com/btcsuite/go-socks v0.0.0-20170105172521-4720035b7bfd // indirect
 	github.com/buger/jsonparser v1.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cockroachdb/errors v1.9.1 // indirect
@@ -38,9 +39,16 @@ require (
 	github.com/decred/dcrd/crypto/blake256 v1.0.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/dominant-strategies/bn256 v0.0.0-20250117181620-a3c0ff77c445 // indirect
+	github.com/dominant-strategies/ltcd v0.0.0-20251016174055-4ac338381b32 // indirect
+	github.com/dominant-strategies/ltcd/btcec/v2 v2.0.0-20251016174055-4ac338381b32 // indirect
+	github.com/dominant-strategies/ltcd/chaincfg/chainhash v0.0.0-20251016174055-4ac338381b32 // indirect
+	github.com/dominant-strategies/ltcd/ltcutil v0.0.0-20251016174055-4ac338381b32 // indirect
+	github.com/dominant-strategies/ltcd/secp256k1_ltc v0.0.0-20251016174055-4ac338381b32 // indirect
 	github.com/edsrzf/mmap-go v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.6.0 // indirect
 	github.com/gcash/bchd v0.21.1 // indirect
+	github.com/gcash/bchlog v0.0.0-20180913005452-b4f036f92fa6 // indirect
+	github.com/gcash/bchutil v0.0.0-20250513235300-39ac514d072b // indirect
 	github.com/getsentry/sentry-go v0.18.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
@@ -64,10 +72,6 @@ require (
 	github.com/libp2p/go-libp2p v0.32.1 // indirect
 	github.com/libp2p/go-libp2p-pubsub v0.10.0 // indirect
 	github.com/libp2p/go-msgio v0.3.0 // indirect
-	github.com/ltcsuite/ltcd v0.23.6 // indirect
-	github.com/ltcsuite/ltcd/chaincfg/chainhash v1.0.2 // indirect
-	github.com/ltcsuite/ltcd/ltcutil v1.1.4-0.20250505084124-c37ac1524e04 // indirect
-	github.com/ltcsuite/secp256k1 v0.1.1 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/magiconair/properties v1.8.7 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -113,6 +117,7 @@ require (
 	github.com/tklauser/numcpus v0.7.0 // indirect
 	github.com/wk8/go-ordered-map/v2 v2.1.8 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
+	github.com/zquestz/grab v0.0.0-20190224022517-abcee96e61b1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
@@ -122,5 +127,6 @@ require (
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	lukechampine.com/blake3 v1.2.1 // indirect
+	lukechampine.com/uint128 v1.3.0 // indirect
 	modernc.org/mathutil v1.6.0 // indirect
 )
