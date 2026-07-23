@@ -31,7 +31,7 @@ const (
 	resultQueueSize       = 10
 	maxRetryDelay         = 60 * 60 * 4 // 4 hours
 	USER_AGENT_VER        = "0.1"
-	miningWorkRefreshRate = 2 * time.Second
+	miningWorkRefreshRate = 200 * time.Millisecond
 )
 
 var (
@@ -207,9 +207,9 @@ func (m *Miner) subscribeProxy() error {
 
 // Subscribes to the zone node in order to get pending header updates.
 func (m *Miner) subscribeNode() {
-	if _, err := m.sliceClients[common.ZONE_CTX].SubscribePendingHeader(context.Background(), m.woCh); err != nil {
-		log.Fatal("Failed to subscribe to pending header events", err)
-	}
+	// if _, err := m.sliceClients[common.ZONE_CTX].SubscribePendingHeader(context.Background(), m.woCh); err != nil {
+	// 	log.Fatal("Failed to subscribe to pending header events", err)
+	// }
 }
 
 // Gets the latest pending header from the proxy.

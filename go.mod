@@ -1,8 +1,6 @@
 module github.com/dominant-strategies/quai-cpu-miner
 
-go 1.23.4
-
-toolchain go1.23.6
+go 1.24
 
 replace github.com/dominant-strategies/go-quai => ../go-quai
 
